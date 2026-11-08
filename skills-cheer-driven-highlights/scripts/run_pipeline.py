@@ -68,6 +68,15 @@ def main():
     ap.add_argument("--dry-run", action="store_true",
                     help="只产生候选清单，不切片段")
     ap.add_argument("--skip-extract", action="store_true")
+    ap.add_argument("--bgm", action="store_true",
+                    help="程序化合成卡点配乐并与现场欢呼声闪避混音，额外输出 *_配乐.mp4")
+    ap.add_argument("--bgm-field-gain", type=float, default=1.35)
+    ap.add_argument("--bgm-music-gain", type=float, default=0.40)
+    ap.add_argument("--bgm-duck", type=float, default=0.80)
+    ap.add_argument("--grade", default="",
+                    help="可选画面调色滤镜（ffmpeg -vf 语法），如夜场偏冷时用 "
+                         "'eq=gamma_r=1.026:gamma_b=0.984:saturation=0.96'。"
+                         "只作用于片段画面，字幕卡不受影响")
     a = ap.parse_args()
 
     ff = set_ffmpeg()
@@ -129,7 +138,8 @@ def main():
         os.makedirs(clips, exist_ok=True)
         run("cut_all.py", ["--plan", highlights, "--outdir", clips], cwd=work)
         final_vid = os.path.join(out, "全集.mp4")
-        run("assemble_all.py", ["--plan", highlights, "--out", final_vid], cwd=work)
+        run("assemble_all.py", ["--plan", highlights, "--out", final_vid]
+            + (["--grade", a.grade] if a.grade else []), cwd=work)
         print(f"\n完成：全集 {final_vid}（{len(d['candidates'])} 段）")
     else:
         final = os.path.join(work, "final.json")
@@ -140,8 +150,21 @@ def main():
         os.makedirs(clips, exist_ok=True)
         run("cut.py", ["--plan", final, "--outdir", clips], cwd=work)
         final_vid = os.path.join(out, "高光集.mp4")
-        run("assemble.py", ["--plan", final, "--out", final_vid], cwd=work)
+        run("assemble.py", ["--plan", final, "--out", final_vid]
+            + (["--grade", a.grade] if a.grade else []), cwd=work)
         print(f"\n完成：精选集 {final_vid}（{len(sel)} 段）")
+
+    # 4) 可选配乐：程序化卡点 BGM + 现场欢呼声闪避混音
+    if a.bgm:
+        plan = highlights if a.mode == "all" else final
+        bgm_out = os.path.join(
+            out, ("全集_配乐.mp4" if a.mode == "all" else "高光集_配乐.mp4"))
+        run("bgm.py", ["--video", final_vid, "--plan", plan,
+                       "--out", bgm_out,
+                       "--field-gain", str(a.bgm_field_gain),
+                       "--music-gain", str(a.bgm_music_gain),
+                       "--duck-depth", str(a.bgm_duck)], cwd=work)
+        print(f"完成：配乐版 {bgm_out}")
 
 
 if __name__ == "__main__":

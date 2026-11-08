@@ -31,8 +31,11 @@ python scripts/run_pipeline.py VIDEO_DIR --mode top --top 10
 python scripts/run_pipeline.py VIDEO_DIR --mode all
 # just produce the candidate list first, decide later:
 python scripts/run_pipeline.py VIDEO_DIR --dry-run
+# add a generated, on-beat soundtrack (ducked under the crowd cheers):
+python scripts/run_pipeline.py VIDEO_DIR --mode top --top 10 --bgm
 ```
-Outputs land in `./cheer_out/` (reel + `clips/` or `clips_all/`).
+Outputs land in `./cheer_out/` (reel + `clips/` or `clips_all/`; `--bgm`
+additionally writes `高光集_配乐.mp4` / `全集_配乐.mp4`).
 
 ## Workflow
 1. **Probe** video dir → list videos (mp4/mov/mkv/avi).
@@ -49,7 +52,14 @@ Outputs land in `./cheer_out/` (reel + `clips/` or `clips_all/`).
    - `all` mode: `cut_all.py` + `assemble_all.py` (every candidate, batched).
 7. **Assemble** → 0.3s xfade + PIL caption cards (auto-fade after 3.5s) +
    loudnorm −16 LUFS. `assemble_all` batches ≤40 segments then concat, and
-   applies a final `alimiter` to keep True Peak < 0 dBTP.
+   applies a final `alimiter` to keep True Peak < 0 dBTP. Cards use a
+   low-saturation warm palette (warm-beige accent, warm-gray subtitle) so they
+   sit naturally on night footage; `--grade` colors only the video layer.
+8. **Optional BGM** (`--bgm`) → `bgm.py` synthesizes an original A-minor
+   on-beat soundtrack (numpy, no external music assets, no licensing issues),
+   places an impact + chord change at **every cut point**, then ducks the music
+   under the crowd cheers and muxes with loudnorm. See `references/goal-review.md`
+   for why the crowd layer must stay audible.
 
 ## Tuning knobs
 - `--pre/--post` : clip length around the detected moment (default 5s/8s).
@@ -57,6 +67,14 @@ Outputs land in `./cheer_out/` (reel + `clips/` or `clips_all/`).
 - `--mode all` : skip filtering entirely (user wants every candidate).
 - `gate` in `detect2.py` (93rd-pctile by default) : lower = more sensitive.
 - Strong-event thresholds in `final_pick.py` : relax to catch more.
+- `--bgm` + `--bgm-field-gain` / `--bgm-music-gain` / `--bgm-duck` : soundtrack
+  balance. Defaults `1.35 / 0.40 / 0.80` keep cheers clearly audible; raising
+  `--bgm-music-gain` above ~0.6 will drown the goal reaction.
+- `--grade` : optional ffmpeg color filter applied **only to the footage**, not
+  to caption cards. Night LED pitches typically read ~`R-B=-8` in highlights;
+  `eq=gamma_r=1.026:gamma_b=0.984:saturation=0.96` brings that to ~`-2.7`
+  without shifting brightness. Avoid `colortemperature` at 5800K — it overshoots
+  to `R-B=+11` (yellow) and darkens midtones.
 
 ## Scripts
 | script | role |
@@ -68,12 +86,17 @@ Outputs land in `./cheer_out/` (reel + `clips/` or `clips_all/`).
 | `final_pick.py` | strong-event filter |
 | `cut.py` / `cut_all.py` | cut clips (selected / all) |
 | `assemble.py` / `assemble_all.py` | assemble reel (selected / all) |
+| `bgm.py` | on-beat generated soundtrack + cheer-ducking mix (`--bgm`) |
 
 ## References
 - `references/algorithm.md` — feature definitions, z-score scoring, merge &
   filter criteria, real-data distributions. Read before changing thresholds.
 - `references/pitfalls.md` — OOM, threshold traps, xfade graph bug, batching,
   True Peak overflow, portable font/ffmpeg paths. Read before debugging.
+- `references/goal-review.md` — **goal verification criteria** (ball in net,
+  players in front of goal, goalmouth errors, high-pitched reaction), the
+  `+1~+5s` timing offset, and why audio alone produces false positives.
+  Read before claiming a candidate is a goal.
 
 ## Notes / environment
 - Needs `ffmpeg`/`ffprobe` on PATH (or set `$FFMPEG`) and `python3` with
@@ -82,4 +105,10 @@ Outputs land in `./cheer_out/` (reel + `clips/` or `clips_all/`).
   the picture — never full-volume decode of huge sources.
 - The detector targets *crowd* reactions; single whistles / collisions /
   single shouts are mostly suppressed by the `n_events`/`band` filters but not
-  perfectly — human review is expected.
+  perfectly — human review is expected. For "goal" requests, do the visual +
+  audio cross-check in `references/goal-review.md`; a cheer with an empty
+  goalmouth is usually off-screen noise, not a goal.
+- `--bgm` needs only `numpy` (already required). It generates the soundtrack
+  locally, so no music library or network service is needed. The music track
+  can be replaced with `--music-out` output plus a re-mux if the user supplies
+  their own song.

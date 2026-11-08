@@ -50,23 +50,24 @@ def make_card(no, grade, src, goal_est, n_events, out):
     d = ImageDraw.Draw(img)
     for i in range(300):
         y = H - 300 + i
-        d.line([(0, y), (W, y)], fill=(0, 0, 0, int(200 * (1 - i / 300) ** 1.6)))
-    d.rectangle([120, H - 250, 132, H - 130], fill=(255, 45, 45, 255))
+        d.line([(0, y), (W, y)], fill=(0, 0, 0, int(180 * (1 - i / 300) ** 1.6)))
+    d.rectangle([120, H - 250, 132, H - 130], fill=(214, 186, 138, 255))
     m, s = divmod(int(goal_est), 60)
     d.text((160, H - 262), f"高光 {no:03d}", font=f1, fill=(255, 255, 255, 255))
     d.text((162, H - 168), f"{src} · {m:02d}:{s:02d} · 爆发 {n_events} 次 · {grade}级",
-           font=f2, fill=(255, 175, 175, 235))
+           font=f2, fill=(226, 218, 205, 235))
     img.save(out)
 
 
-def assemble_batch(parts, cards, out, total_dur):
+def assemble_batch(parts, cards, out, total_dur, grade=""):
     n = len(parts)
     inputs, vparts, aparts = [], [], []
+    eq = ("," + grade) if grade else ""
     for i in range(n):
         dur = 13.0
         inputs += ["-i", parts[i], "-loop", "1", "-t", "13", "-i", cards[i]]
         vparts.append(
-            f"[{2*i}:v]trim=0:{dur},setpts=PTS-STARTPTS[v{i}];"
+            f"[{2*i}:v]trim=0:{dur},setpts=PTS-STARTPTS{eq}[v{i}];"
             f"[{2*i+1}:v]trim=0:13,setpts=PTS-STARTPTS,format=rgba,"
             f"fade=t=in:st=0:d=0.25,fade=t=out:st=3.2:d=0.3[c{i}];"
             f"[v{i}][c{i}]overlay=0:0:enable='between(t,0,3.5)',"
@@ -111,6 +112,8 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--plan", default="work/highlights.json")
     ap.add_argument("--out", default="out/全集.mp4")
+    ap.add_argument("--grade", default="",
+                    help="可选调色滤镜（ffmpeg -vf 语法），只作用于片段画面")
     a = ap.parse_args()
     os.makedirs("work/cards_all", exist_ok=True)
     d = json.load(open(a.plan))
@@ -130,7 +133,7 @@ def main():
         pf = f"work/part{bi}.mp4"
         bdur = len(b) * 13.0 - XD * (len(b) - 1)
         print(f"[批 {bi}/{len(batches)}] 合成 {len(b)} 段 → {pf}", flush=True)
-        assemble_batch(bp, bc, pf, bdur)
+        assemble_batch(bp, bc, pf, bdur, a.grade)
         pfiles.append(pf)
         idx0 += len(b)
 
