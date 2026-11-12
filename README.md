@@ -4,12 +4,14 @@ A [WorkBuddy](https://www.workbuddy.cn) skill that detects crowd cheers, applaus
 
 Works even when the footage is a fixed wide-angle camera with no visible audience and no commentary: audio is the locator. It can tell you *when* a cheer happened, but not from the picture whether it was a goal or a miss — human review of the reel is expected.
 
+Fixed overhead footage normally shows only half the pitch and one goal, while cheers are full-field. **Analyse only the goal nearest the camera, and re-identify it on every run** (teams swap ends at half-time, so the near goal changes). The far goal is "audio hit, visually undecidable" — never apply visual goal criteria, review crops, or `check_goal.py` scans to it. See `references/goal-review.md`.
+
 ## What's inside
 
 ```
 skills-cheer-driven-highlights/
 ├── SKILL.md                  # skill definition (triggers, workflow, tuning knobs)
-├── scripts/                  # 10 decoupled scripts
+├── scripts/                  # 11 decoupled scripts
 │   ├── run_pipeline.py      # one-shot end-to-end orchestrator (--bgm)
 │   ├── feats.py             # streaming audio feature extractor (OOM-safe)
 │   ├── detect2.py           # cheer detector (local z-score, adaptive gate)
@@ -17,11 +19,12 @@ skills-cheer-driven-highlights/
 │   ├── final_pick.py        # strong-event filter (goal/miss vs whistle/collision)
 │   ├── cut.py / cut_all.py  # cut clips (selected / all)
 │   ├── assemble.py / assemble_all.py  # xfade reel + caption cards + TP-safe loudnorm
-│   └── bgm.py               # generated on-beat soundtrack + cheer-ducking mix
+│   ├── bgm.py               # generated on-beat soundtrack + cheer-ducking mix
+│   └── check_goal.py        # static-blob goalmask detector: is the ball in the net?
 ├── references/
 │   ├── algorithm.md         # feature defs, z-score scoring, filter criteria, real distributions
 │   ├── pitfalls.md          # OOM / threshold traps / xfade bug / batching / True Peak / portability
-│   └── goal-review.md       # goal verification criteria (ball in net / players / errors / pitch)
+│   └── goal-review.md       # near-goal precondition + five goal criteria + timing offset
 └── assets/
 ```
 

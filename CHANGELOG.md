@@ -1,5 +1,27 @@
 # Changelog
 
+## v1.3.0 (2026-11-12)
+
+- **Near-goal precondition** — a fixed overhead camera covers only half the
+  pitch plus one goal, while cheers are full-field. `SKILL.md` and
+  `references/goal-review.md` now require analysing **only the goal nearest the
+  camera** and **re-identifying that goal on every run** (larger goal rectangle,
+  nearer the frame edge, wider posts). Teams swap ends at half-time, so the near
+  goal changes; cross-half footage must be judged per segment. Visual criteria,
+  review crops and `check_goal.py` scans apply to the near goal only; the far
+  goal is marked "audio hit, visually undecidable". Reports must state the
+  near-goal side and coverage up front.
+- **Criterion 5 scope narrowed** — its inversion of "empty goalmouth = noise"
+  holds **only on the near goal**. An empty far-goal mouth means the attack
+  happened off-screen: reading it as noise deletes valid clips, reading it as a
+  solo goal invents a false one. Motivation: after the half-time swap only 13 of
+  51 candidates had any goalmouth event.
+- Aligned with the `goal-highlight-editor` expert's G0 hard gate (same rule).
+- Doc sync: folds in previously uncommitted `SKILL.md` updates (`--bgm` defaults
+  `1.35/0.58/0.60`, `--fps 0`, `check_goal.py`, "audio never labels a goal") and
+  the fifth criterion / `pre≈8s` guidance in `goal-review.md`. README script
+  count and criterion description corrected.
+
 ## v1.2.0 (2026-11-08)
 
 - **Natural color palette** — caption cards now use a low-saturation warm-beige
