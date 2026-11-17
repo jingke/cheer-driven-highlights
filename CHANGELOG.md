@@ -1,5 +1,43 @@
 # Changelog
 
+## v1.3.2 (2026-11-17)
+
+- **No-crowd guard** (`references/goal-review.md`) — the audio-locator premise
+  collapses on empty-stadium matches. A new pre-flight check requires confirming
+  spectators/crowd cheers before trusting audio scores. Measured on an 87-min
+  empty-stand match: 209+84 audio events, 117 candidates, and even band 0.81/0.92
+  S-grade candidates showed completely calm native-resolution frames. When no
+  crowd is present, visual review is mandatory and audio rank must never be
+  reported as a goal.
+- **Goal-behind camera caveats** (`references/pitfalls.md` §11–12) — the
+  three-frame static-ball detector (`check_goal.py`) fails when the camera sits
+  behind the goal (median net-box noise 2493 px vs ~0 top-down). Dense-window
+  sampling replaced full-film 4fps scanning (2360 frames / 2 min vs 21k frames /
+  >6 min), and a vectorized numpy scorer replaced `ndimage.label` which hit
+  SIGTERM (exit 137) on 2360 frames.
+- **Black first frame fix** (`references/pitfalls.md` §13, expert G5) — an
+  opening `fade=t=in:st=0:d=0.2` on the video layer made frame 0 pure black
+  (mean=0.0), causing black Finder/preview thumbnails. Remove the video-layer
+  fade (measured frame-0 mean 0.0 → 91.5) and embed a `attached_pic` cover via
+  `-c copy`. Enforced a delivery gate: frame-0 mean must be ≥10.
+- Aligned `goal-highlight-editor` expert G5 with the above. No goal was claimed
+  for the 11/16 footage; a 9-clip "chance" reel was delivered with honest labels.
+
+## v1.3.1 (2026-11-12)
+
+- **Experience write-back protocol** — the agent now persists reusable lessons
+  instead of relying on manual iteration. `SKILL.md` and `references/pitfalls.md`
+  define where each kind of finding goes (daily log, user-level MEMORY.md,
+  pitfalls.md, goal-review.md, SKILL.md / CHANGELOG), require reproducible
+  quantitative evidence, and gate promotion on three conditions: reproducible,
+  evidenced, non-conflicting (single observations stay "pending reproduction";
+  ≥2 occurrences graduate to rules).
+- After any write-back: re-run `package_skill.py`, sync the repo copy, and for
+  expert changes re-run `validate_expert.py` + `register_expert.py`. Never
+  auto-commit or auto-push.
+- Mirrored in the `goal-highlight-editor` expert MD as its "经验回写协议" section,
+  paired with a weekly distillation automation.
+
 ## v1.3.0 (2026-11-12)
 
 - **Near-goal precondition** — a fixed overhead camera covers only half the

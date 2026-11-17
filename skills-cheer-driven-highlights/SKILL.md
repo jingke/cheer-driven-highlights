@@ -147,3 +147,10 @@ additionally writes `高光集_配乐.mp4` / `全集_配乐.mp4`).
   locally, so no music library or network service is needed. The music track
   can be replaced with `--music-out` output plus a re-mux if the user supplies
   their own song.
+- **Experience write-back**: after each run, append reproducible failures with
+  quantitative evidence (command, measured value, exit code) to
+  `references/pitfalls.md`; promote a pattern into `SKILL.md` / `goal-review.md`
+  only after ≥2 reproductions and only if it does not contradict existing rules.
+  Then re-run `package_skill.py`. The `goal-highlight-editor` expert applies the
+  same protocol to its G0–G7 gates — keep expert MD, skill docs, repo copy and
+  dist in sync. Never auto-commit or auto-push.

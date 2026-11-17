@@ -41,3 +41,50 @@ or shutil.which("ffmpeg") or "/opt/homebrew/bin/ffmpeg"`。
 ## 9. 画面限制：无法区分进球 vs 失误
 固定机位远景、人物极小、无观众特写时，只能定位「何时欢呼」，
 **无法从画面判断是进球还是错失机会**。交付时务必提示人工过一遍确认性质。
+
+## 10. 本清单的维护约定（经验回写）
+
+新坑追加为下一编号条目，沿用「现象 → 实测数值 / 报错 → **修**：」三段式。
+- **证据**：必须带具体命令、量化数值或退出码，不写「可能是」「感觉」。
+- **闸门**：可复现、有证据、不与既有条目冲突；单次观测标注「待复现」，
+  ≥2 次复现才升级为 `SKILL.md` / `goal-review.md` 里的规则。
+- **收尾**：改动后跑 `package_skill.py` 重打包，并同步 repo 副本；
+  专家包改动另需 `validate_expert.py` + `register_expert.py`。
+- 提交与推送须用户明确确认，不自动执行。每周由定时自动化蒸馏 daily log
+  （见专家 MD「经验回写协议」）。
+
+## 11. 球门后机位：静止球检测（三帧求交）失效
+
+`check_goal.py` 依赖"固定机位下球门/草坪静止、进球后球静止在网内"。
+**球门后机位（网在前景、镜头朝场内）下此前提失效**：网后球员持续活动，
+实测 `thr=25` 时网内框中位噪声 2493 px（俯拍机位接近 0），无法区分球与人。
+**修**：此类机位放弃 check_goal.py，改密集时间窗（8fps）亮斑检测 + 原分辨率目检。
+
+## 12. 连通域批量检测触发 SIGTERM + 全片扫描成本失控
+
+- 对 2360 帧逐帧 `scipy.ndimage.label` 连通域 → 内存/时间超限，Exit 137 SIGTERM。
+  **修**：改纯 numpy 小尺寸（300×168）向量化统计 `m.sum()` / `roi.max()`，
+  单候选 40 帧仅 8MB，稳定通过。
+- 全片 4fps 抽帧（87min → 21k 帧 ≈ 840MB / >6min 未完成）代价过高。
+  **修**：只对音频候选 ±2s 开密集窗（59×40=2360 帧 / 2min），收益更高。
+
+## 13. 开场黑帧导致 Finder 缩略图全黑（交付前必查 t=0）
+
+`assemble*.py` 的合成链把 `fade=t=in:st=0:d=0.2` 加在**视频层** →
+第 0 帧 mean=0.0（纯黑），0.05s 才 mean=37.5，0.2s 全亮。
+macOS Finder / 预览面板取**第 0 帧**生成缩略图，于是封面显示全黑，
+用户会误以为成片损坏；短视频预览面板同样受影响。
+
+**修（双层，都做最稳）**：
+1. **治本**：去掉视频层开场淡入（`fade=t=in:st=0:d=0.2,settb=AVTB[v{i}o]`
+   → `settb=AVTB[v{i}o]`），重合成。字幕卡自身的 `fade=t=in:st=0:d=0.25`
+   叠加在已有画面上，不会造成黑场，无需动。
+   实测修复后 t=0 mean=0.0 → **91.5**、亮像素 94.4%。
+2. **加固**：抽 t=0.3s 帧作封面，用 `-c copy` 嵌 attached_pic：
+   `ffmpeg -i V.mp4 -i cover.jpg -map 0 -map 1 -c copy -disposition:v:1 attached_pic -movflags +faststart OUT.mp4`
+   验证封面流 `attached_pic=1`、主视频流仍 `default=1`，播放解码不受影响。
+
+**交付前自检**：`ffmpeg -ss 0 -frames:v 1` 抽第 0 帧算 mean，**<10 即判开场黑**，
+必须修复后再交付。`qlmanage -t` 在本沙箱报 `sandbox initialization failed:
+Operation not permitted`，无法强制刷新 Finder 缓存，但非黑首帧 + attached_pic 已足够。
+
