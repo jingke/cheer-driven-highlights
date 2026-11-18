@@ -1,5 +1,20 @@
 # Changelog
 
+## v1.3.9 (2026-11-18)
+
+- **Re-cut clips as a substitute review source** (`references/pitfalls.md` §15,
+  expert notes) — when source media leaves the external volume, the already-cut
+  15s clips in `out/clips_all/` can drive a full review without the original.
+  Map clips to candidates by `(src, goal_est seconds)`; since a clip starts at
+  `goal_est - pre` (pre=8), sample clip-internal `t = pre + offset`
+  (e.g. `t=6..13` for the 8-frame `goal_est-2..+5` window). Measured: 101 clips
+  mapped, 800 frames, zero new findings, confirming the 9-clip set was complete.
+- **16-frame sampling does not improve verdict accuracy** — measured 1500 frames
+  over 100 clips, top-20 unreviewed candidates: zero additions. Verdicts depend
+  on physical evidence (ball in net / net shake), not sample density; 8-frame
+  `goal_est-2..+5` remains the cost/quality optimum. Note that `-ss 15` on a
+  15.015s clip usually yields no frame, so "16 frames" is effectively 15.
+
 ## v1.3.8 (2026-11-18)
 
 - **8-frame confirmation gate for final selection** (`pitfalls.md` §14 supplement) —
