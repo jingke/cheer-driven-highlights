@@ -22,13 +22,14 @@ def sh(cmd):
     return p
 
 
-def cut_one(src, ss, dur, out, fps=30):
+def cut_one(src, ss, dur, out, fps=0):
+    r_args = ["-r", f"{fps:g}"] if fps and fps > 0 else []
     sh([FF, "-hide_banner", "-nostdin", "-y",
         "-ss", f"{ss:.3f}", "-i", src, "-t", f"{dur:.3f}",
         "-map", "0:v:0", "-map", "0:a:0",
         "-c:v", "libx264", "-preset", "medium", "-crf", "20",
-        "-pix_fmt", "yuv420p", "-r", str(fps),
-        "-c:a", "aac", "-b:a", "192k", "-ar", "48000", "-ac", "2",
+        "-pix_fmt", "yuv420p"] + r_args +
+       ["-c:a", "aac", "-b:a", "192k", "-ar", "48000", "-ac", "2",
         "-af", f"afade=t=in:st=0:d=0.25,afade=t=out:st={max(0,dur-0.3):.2f}:d=0.3",
         "-movflags", "+faststart", out])
 
@@ -38,6 +39,8 @@ def main():
     ap.add_argument("--plan", default="work/final.json")
     ap.add_argument("--outdir", default="out/clips")
     ap.add_argument("--workdir", default="work")
+    ap.add_argument("--fps", type=float, default=0.0,
+                    help="切片帧率；0 = 保持源帧率（24fps 源强制 30 会重复帧发顿）")
     a = ap.parse_args()
     os.makedirs(a.outdir, exist_ok=True)
 
@@ -45,10 +48,12 @@ def main():
     sel = d["selected"]
     parts = []
     for i, c in enumerate(sel, 1):
-        out = f"{a.outdir}/hl{i:03d}_{c['src']}_{int(c['goal_est'])}s.mp4"
+        hh, rem = divmod(int(c["goal_est"]), 3600)
+        mm, ss = divmod(rem, 60)
+        out = f"{a.outdir}/hl{i:03d}_{c['src']}_{hh:02d}_{mm:02d}_{ss:02d}.mp4"
         print(f"[{i}/{len(sel)}] 切 {c['src']} @ {c['ss']:.1f}s +{c['clip_dur']:.1f}s "
               f"爆发{c['n_events']}次 → {os.path.basename(out)}", flush=True)
-        cut_one(c["src_file"], c["ss"], c["clip_dur"], out)
+        cut_one(c["src_file"], c["ss"], c["clip_dur"], out, fps=a.fps)
         parts.append(out)
         c["clip_file"] = out
 

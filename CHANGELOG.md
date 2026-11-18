@@ -1,5 +1,79 @@
 # Changelog
 
+## v1.3.8 (2026-11-18)
+
+- **8-frame confirmation gate for final selection** (`pitfalls.md` §14 supplement) —
+  the 3-frame pre-screen window (`goal_est+[1,3,5]`) is too narrow and missed
+  goals visible in other frames: a 3-clip result was found to omit 6 of a
+  previous 9-clip set. Final candidates must pass an 8-frame sequence review
+  (`goal_est+[-2..+5]`, 1s step) and the review pool must be the union of
+  pre-screen top-30 and high deep-review scores, not just the pre-screen top.
+- **Batch slicing with per-clip probe** — slicing 9 clips in one run hit SIGTERM
+  (exit 137) and left a corrupt `moov atom not found` file. Slice in batches
+  of ≤3 and probe each clip's duration (~15.0s); re-cut corrupt ones via `cut_one()`.
+
+## v1.3.7 (2026-11-18)
+
+- **Pre-screen before slicing** (`references/pitfalls.md` §14, expert notes) —
+  all-mode slicing of 117 candidates took >10 min without finishing and
+  produced false positives such as a corner-kick setup (`band=0.073`). New
+  workflow: random-seek 3 frames per candidate at `goal_est+[1,3,5]`
+  (351 frames / 3m37s measured), small-size numpy blob score for rough ranking
+  only, then contact-sheet visual review to pick real ball-in-goal-area frames.
+  Result: 117 → 3 clips, ~97% reduction, an order of magnitude faster than
+  full slicing. Explicitly warns that the blob score is NOT a verdict (the
+  highest scorer was two players with no ball visible).
+
+## v1.3.6 (2026-11-18)
+
+- **Clip filenames use in-video timestamps** — `cut.py` / `cut_all.py` now name
+  clips `hl###_<src>_<hh>_<mm>_<ss>.mp4` (and `hl###_<grade>_<src>_<hh>_<mm>_<ss>.mp4`
+  in all-mode) instead of raw seconds, so names map directly onto the player
+  timeline and stay correct past one hour. Computed via
+  `hh,rem = divmod(int(goal_est),3600)` then `mm,ss = divmod(rem,60)`, zero-padded.
+  Examples: 2791s → `00_46_31`, 5238s → `01_27_18`.
+  Expert Phase 5 documents the convention.
+
+## v1.3.5 (2026-11-18)
+
+- **Goal-extent-first hard gate** — expert G0a and `goal-review.md` now require
+  marking the goal's exact bounds on a native-resolution frame **before any goal
+  or shot judgement**: `GOAL_RECT` (outer posts + crossbar) and `NET_BOX` (valid
+  goal area, explicitly excluding the grass in front). All "ball resting / ball
+  in net / net shake" evidence must fall inside `NET_BOX`; balls outside the
+  posts, behind the goal line, or in front of the goal never count. If the box
+  cannot be fully drawn or the ball stays <20px after zoom, the segment is
+  declared unresolvable and no goal verdict is made. Review workflow gained
+  this as step 2, ahead of audio scoring. G0 picks *which* goal, G0a fixes its
+  *exact boundary*; both required before G1–G7.
+
+## v1.3.4 (2026-11-18)
+
+- **Net-shake promoted to a standalone goal condition** — `goal-review.md` and
+  expert G1 now treat a localized net dimple/oscillation (0.2–1s, sudden, with
+  rebound) as direct physical evidence of a ball hitting the net, valid on its
+  own for goal-behind cameras. Explicit false-positive exclusions added: wind
+  (whole net sways slowly), player/keeper contact (limb visible at contact
+  point), and camera shake (entire frame including posts moves together).
+  G1 expanded from four to five conditions; goal-review criteria from five to
+  six (new #6, cross-referenced to the goal-behind chapter, top-down only where
+  the net is large enough to observe deformation).
+
+## v1.3.3 (2026-11-18)
+
+- **Goal-behind camera editing guide** (`references/goal-review.md`) — a new
+  dedicated chapter systematises the camera-behind-goal workflow that was
+  previously scattered across pitfalls §11–12 and work logs: camera recognition
+  (net in foreground, far goal invisible), four-tier goal evidence specific to
+  this view (ball growing toward camera → net impact → ball resting in net →
+  keeper retrieving), why `check_goal.py` three-frame intersection fails here
+  (median net-box noise 2493 px), the 8fps dense-window + vectorized-blob
+  fallback, `pre≈8` slicing rationale, and honest chance/shot labelling when
+  no net impact is visible.
+- Expert G0 now routes goal-behind cameras to that chapter instead of relying
+  on the top-down heuristics. No behavioural change for standard top-down
+  footage.
+
 ## v1.3.2 (2026-11-17)
 
 - **No-crowd guard** (`references/goal-review.md`) — the audio-locator premise
